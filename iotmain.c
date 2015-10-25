@@ -27,6 +27,7 @@
 char configFile[50] = "/etc/iotsample-raspberrypi/device.cfg";
 char tStamp[25] = "";
 char motData[5] = "";
+char sonicData[5] = "";
 float PI = 3.1415926;
 float MIN_VALUE = -1.0;
 float MAX_VALUE = 1.0;
@@ -61,6 +62,7 @@ int reconnect_delay(int i);
 float getCPUTemp();
 float getLocTemp();
 char * getMotData();
+char * getSonicDistance();
 void setPINmode();
 float GetCPULoad();
 char * getTimeStamp();
@@ -96,8 +98,9 @@ int main(int argc, char **argv) {
 	wiringPiSetup();
 
 
-	pinMode (PIR, INPUT) ;
-        pinMode(TRIG, OUTPUT);
+        pinMode(LED, OUTPUT);	// PIN 0
+	pinMode (PIR, INPUT) ;	// PIN 1
+        pinMode(TRIG, OUTPUT);	// PIN 4
         pinMode(ECHO, INPUT);
 
 	//setup the syslog logging
@@ -172,8 +175,7 @@ int main(int argc, char **argv) {
 	}
 	while (1) {
 		//strcpy(tStamp, getTimeStamp());
-		JsonMessage json_message = { DEVICE_NAME, getLocTemp(), getMotData()
-				,getTimeStamp(), GetSensorData() };
+		JsonMessage json_message = { DEVICE_NAME, getLocTemp(), getMotData() , getSonicDistance(), getTimeStamp(), GetSensorData() };
 		json = generateJSON(json_message);
 		res = publishMQTTMessage(&client, publishTopic, json);
 		syslog(LOG_DEBUG, "Posted the message with result code = %d\n", res);
@@ -343,9 +345,6 @@ float GetSensorData() {
 
 }
 
-float getLocTemp() {
-	return 23.5;	
-}
 
 void setPINmode() {
 
@@ -354,11 +353,43 @@ void setPINmode() {
 
 }
 
+// This function interfaces with the ultrasonic sensor to get the distance.
+char * getSonicDistance() {
+
+       printf("entering getcm:\n");
+        //Send trig pulse
+        digitalWrite(TRIG, HIGH);
+        delayMicroseconds(20);
+        digitalWrite(TRIG, LOW);
+
+        printf("before digital Read :\n");
+        //Wait for echo start
+        while(digitalRead(ECHO) == LOW);
+
+        long startTime = micros();
+
+        printf("after digital Read :\n");
+        //Wait for echo end
+        while(digitalRead(ECHO) == HIGH);
+        long travelTime = micros() - startTime;
+
+        printf("after digital Read echo:\n");
+        //Get distance in cm
+
+        int distance = travelTime / 58;
+
+sprintf(sonicData,"%3d",distance);
+	printf("sonicData is %s\n", sonicData);
+
+	return sonicData;
+	
+}
+
 char * getMotData() {
 
-int	rc;  // gpio read returns integer
+int rc;
 // Read the PIR sensor information
-rc = digitalRead(1);
+rc = digitalRead(PIR);
 // Set the LED to the same value so that we can monitor locally
 digitalWrite(LED,rc); 
 sprintf(motData,"%1d",rc);
@@ -378,3 +409,25 @@ char * getTimeStamp() {
 return tStamp;
 }
 
+float getLocTemp(void) {
+
+
+ FILE *fp = NULL;
+        char line[256];
+        char* ptr = NULL;
+        float temp;
+
+        fp = fopen ("/sys/bus/w1/devices/28-021502f83aff/w1_slave","r");
+        if (fp==NULL) {
+                printf("Config file not found\n");
+                return 0;
+        }
+        fgets(line, 256, fp) ;
+        fgets(line, 256, fp) ;
+        fclose(fp);
+        ptr = strtok(line,"=");
+        ptr = strtok(NULL,"=");
+        sscanf(ptr,"%f",&temp);
+printf("the temp is %.2f", temp/1000);
+return temp/1000;
+}

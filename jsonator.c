@@ -41,6 +41,11 @@ char * generateJSON(JsonMessage passedrpi ) {
 
 	strcat(jsonReturned, "\"motion\":");
 	strcat(jsonReturned, passedrpi.motData);
+// Concatenate the distance
+	strcat(jsonReturned, ",");
+
+	strcat(jsonReturned, "\"obstacle\":");
+	strcat(jsonReturned, passedrpi.obstacle);
 /*
 
 
@@ -60,7 +65,6 @@ char * generateJSON(JsonMessage passedrpi ) {
 	strcat(jsonReturned, buffer);
 */
 	strcat(jsonReturned, "}");
-
 	strcat(jsonReturned, ",");
         strcat(jsonReturned, "\"ts\":");
 	strcat(jsonReturned, passedrpi.tStamp);
